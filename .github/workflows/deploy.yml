@@ -1,0 +1,56 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [ trigger-deploy-event ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GKE_SA_KEY }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          project_id: ${{ secrets.GKE_PROJECT }}
+          location: ${{ secrets.GKE_ZONE }}
+
+      - name: Create Secrets in GKE
+        run: |
+          # create namespace if not exists
+          kubectl create namespace insurance-ns --dry-run=client -o yaml | kubectl apply -f -
+          
+          # create secret
+          kubectl create secret generic insurance-secrets \
+            --namespace=insurance-ns \
+            --from-literal=postgres-db='${{ secrets.POSTGRES_DB }}' \
+            --from-literal=postgres-user='${{ secrets.POSTGRES_USER }}' \
+            --from-literal=postgres-password='${{ secrets.POSTGRES_PASSWORD }}' \
+            --from-literal=google-client-id='${{ secrets.GOOGLE_CLIENT_ID }}' \
+            --from-literal=google-client-secret='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+            --from-literal=smtp-username='${{ secrets.SMTP_USERNAME }}' \
+            --from-literal=smtp-password='${{ secrets.SMTP_PASSWORD }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Prepare Manifests
+        run: |
+          #  IMAGE_OWNER to lower case for Docker
+          OWNER_LOWER=$(echo "${{ secrets.IMAGE_OWNER }}" | tr '[:upper:]' '[:lower:]')
+          sed -i "s|GHCR_IMAGE_OWNER|$OWNER_LOWER|g" k8s/*.yaml
+
+      - name: Apply Manifests
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Restart Deployments
+        run: |
+          kubectl rollout restart deployment -n insurance-ns

@@ -1,0 +1,100 @@
+# FRONTEND
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: insurance-ns
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: frontend
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: insurance-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/GHCR_IMAGE_OWNER/insurance-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+---
+
+# GATEWAY
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: insurance-ns
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 1000
+  selector:
+    app: gateway
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: insurance-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      initContainers:
+        - name: wait-for-consul
+          image: busybox
+          command: [ 'sh', '-c', 'until nc -z consul 8500; do echo waiting for consul; sleep 2; done;' ]
+      containers:
+        - name: gateway
+          image: ghcr.io/GHCR_IMAGE_OWNER/insurance-gateway:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: google-client-secret
+            - name: FRONTEND_URL
+              value: "http://localhost"
+            - name: GATEWAY_URL
+              value: "http://localhost"
+          ports:
+            - containerPort: 1000
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 1000
+            initialDelaySeconds: 30
+            periodSeconds: 10

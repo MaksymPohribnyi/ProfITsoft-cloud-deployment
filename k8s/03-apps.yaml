@@ -1,0 +1,169 @@
+# BACKEND
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-app
+  namespace: insurance-ns
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: backend-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-app
+  namespace: insurance-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-app
+  template:
+    metadata:
+      labels:
+        app: backend-app
+    spec:
+      initContainers:
+        - name: wait-for-deps
+          image: busybox
+          command: [ 'sh', '-c', 'until nc -z consul 8500 && nc -z postgres 5432 && nc -z kafka 9092; do echo waiting for deps; sleep 2; done;' ]
+      containers:
+        - name: backend-app
+          image: ghcr.io/GHCR_IMAGE_OWNER/insurance-backend:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/insurance_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: postgres-password
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+
+# NOTIFICATION SERVICE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: insurance-ns
+spec:
+  ports:
+    - port: 8081
+  selector:
+    app: notification-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: insurance-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      initContainers:
+        - name: wait-for-deps
+          image: busybox
+          command: [ 'sh', '-c', 'until nc -z kafka 9092 && nc -z elasticsearch 9200; do echo waiting for deps; sleep 2; done;' ]
+      containers:
+        - name: notification-service
+          image: ghcr.io/GHCR_IMAGE_OWNER/insurance-notification:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: SPRING_MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: smtp-username
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: insurance-secrets
+                  key: smtp-password
+          ports:
+            - containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 15
+
+# PAYMENTS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-service
+  namespace: insurance-ns
+spec:
+  ports:
+    - port: 7777
+  selector:
+    app: payments-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-service
+  namespace: insurance-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-service
+  template:
+    metadata:
+      labels:
+        app: payments-service
+    spec:
+      initContainers:
+        - name: wait-for-deps
+          image: busybox
+          command: [ 'sh', '-c', 'until nc -z mongo 27017; do echo waiting for mongo; sleep 2; done;' ]
+      containers:
+        - name: payments-service
+          image: ghcr.io/GHCR_IMAGE_OWNER/insurance-payments:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: MONGO_ADDRESS
+              value: "mongodb://mongo:27017/payments_db"
+            - name: POLICY_SERVICE_URL
+              value: "http://backend-app:8080/api/insurance_policy"
+            - name: DISCOVERY_HOST
+              value: "payments-service"
+            - name: HOST
+              value: "0.0.0.0"
+          ports:
+            - containerPort: 7777
