@@ -360,6 +360,7 @@ spec:
       labels:
         app: kafka
     spec:
+      enableServiceLinks: false
       initContainers:
         - name: wait-for-zookeeper
           image: busybox
@@ -373,14 +374,6 @@ spec:
       containers:
         - name: kafka
           image: confluentinc/cp-kafka:7.7.7
-          command: [ "/bin/bash" ]
-          args:
-            - -c
-            - |
-              echo "=== Debug: Starting Kafka ==="
-              ls -la /var/lib/kafka/data/
-              echo "=== Debug: Running startup script ==="
-              /etc/confluent/docker/run
           env:
             - name: KAFKA_BROKER_ID
               value: "1"
