@@ -9,7 +9,7 @@ data:
   SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED: "true"
   CONSUL_HOST: "consul"
   CONSUL_PORT: "8500"
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-0.kafka.insurance-ns.svc.cluster.local:9092"
   SPRING_ELASTICSEARCH_URIS: "http://elasticsearch:9200"
   FRONTEND_URL: "https://136.110.148.95.nip.io"
   GATEWAY_URL: "https://136.110.148.95.nip.io"
