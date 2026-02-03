@@ -86,10 +86,6 @@ spec:
                 secretKeyRef:
                   name: insurance-secrets
                   key: google-client-secret
-            - name: FRONTEND_URL
-              value: "http://localhost"
-            - name: GATEWAY_URL
-              value: "http://localhost"
           ports:
             - containerPort: 1000
           livenessProbe:
