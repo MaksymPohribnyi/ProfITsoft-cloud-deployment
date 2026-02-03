@@ -11,5 +11,5 @@ data:
   CONSUL_PORT: "8500"
   SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   SPRING_ELASTICSEARCH_URIS: "http://elasticsearch:9200"
-  FRONTEND_URL: "http://34.118.42.66.nip.io"
-  GATEWAY_URL: "http://34.118.42.66.nip.io"
+  FRONTEND_URL: "https://136.110.148.95.nip.io"
+  GATEWAY_URL: "https://136.110.148.95.nip.io"

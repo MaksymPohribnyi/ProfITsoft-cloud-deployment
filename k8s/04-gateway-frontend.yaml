@@ -41,7 +41,7 @@ metadata:
   name: gateway
   namespace: insurance-ns
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
     - port: 80
       targetPort: 1000
