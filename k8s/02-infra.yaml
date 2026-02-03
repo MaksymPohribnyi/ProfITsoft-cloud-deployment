@@ -199,6 +199,18 @@ spec:
       labels:
         app: elasticsearch
     spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: [ "sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data" ]
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: elasticsearch-storage
+        - name: increase-vm-max-map
+          image: busybox
+          command: [ "sysctl", "-w", "vm.max_map_count=262144" ]
+          securityContext:
+            privileged: true
       containers:
         - name: elasticsearch
           image: docker.elastic.co/elasticsearch/elasticsearch:9.2.3
@@ -208,7 +220,7 @@ spec:
             - name: xpack.security.enabled
               value: "false"
             - name: ES_JAVA_OPTS
-              value: "-Xms512m -Xmx512m"
+              value: "-Xms1g -Xmx1g"
           ports:
             - containerPort: 9200
             - containerPort: 9300
@@ -217,7 +229,7 @@ spec:
               name: elasticsearch-storage
           resources:
             requests:
-              memory: "1Gi"
+              memory: "2Gi"
               cpu: "500m"
             limits:
               memory: "2Gi"
@@ -339,7 +351,7 @@ spec:
       initContainers:
         - name: wait-for-zookeeper
           image: busybox
-          command: [ 'sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 2; done;' ]
+          command: [ 'sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 5; done;' ]
       containers:
         - name: kafka
           image: confluentinc/cp-kafka:7.7.7
@@ -366,3 +378,10 @@ spec:
               value: "/var/lib/kafka/data/logs"
           ports:
             - containerPort: 9092
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m
