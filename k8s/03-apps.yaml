@@ -167,3 +167,9 @@ spec:
               value: "0.0.0.0"
           ports:
             - containerPort: 7777
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 7777
+            initialDelaySeconds: 60
+            periodSeconds: 15
