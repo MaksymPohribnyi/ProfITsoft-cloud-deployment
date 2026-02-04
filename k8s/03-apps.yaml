@@ -157,6 +157,8 @@ spec:
             - configMapRef:
                 name: app-config
           env:
+            - name: PORT
+              value: "7777"
             - name: MONGO_ADDRESS
               value: "mongodb://mongo:27017/payments_db"
             - name: POLICY_SERVICE_URL
