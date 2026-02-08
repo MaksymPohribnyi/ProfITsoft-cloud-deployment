@@ -332,9 +332,9 @@ spec:
       initContainers:
         - name: fix-permissions
           image: busybox
-          command: [ "sh", "-c", "chown -R 1000:1000 /var/lib/zookeeper/data" ]
+          command: [ "sh", "-c", "chown -R 1000:1000 /var/lib/zookeeper" ]
           volumeMounts:
-            - mountPath: /var/lib/zookeeper/data
+            - mountPath: /var/lib/zookeeper
               name: zookeeper-storage
       containers:
         - name: zookeeper
